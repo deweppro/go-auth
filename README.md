@@ -21,20 +21,20 @@ see more [here](internal/examples)
 
 ```go
 import (
-	"github.com/deweppro/go-auth/provider"
-	"github.com/deweppro/go-auth/provider/isp"
+    "github.com/deweppro/go-auth/provider"
+    "github.com/deweppro/go-auth/provider/isp"
 )
 
 var providerConfig = &provider.Config{
-		Provider: []isp.Config{
-			{
-				Name:         "google",
-				ClientID:     "****************.apps.googleusercontent.com",
-				ClientSecret: "****************",
-				RedirectURL:  "https://example.com/oauth/callback/google",
-			},
-		},
-	}
+        Provider: []isp.Config{
+            {
+                Name:         "google",
+                ClientID:     "****************.apps.googleusercontent.com",
+                ClientSecret: "****************",
+                RedirectURL:  "https://example.com/oauth/callback/google",
+            },
+        },
+    }
 
 providers := provider.New(providerConfig)
 ```
@@ -51,10 +51,10 @@ providers.Add(provider1, provider2, ...)
 import "github.com/deweppro/go-auth/storage"
 
 var storageConfig = &storage.Config{
-		ACL: map[string]string{
-			"example.user@gmail.com": "01010101010",
-		},
-	}
+        ACL: map[string]string{
+            "example.user@gmail.com": "01010101010",
+        },
+    }
 
 store := storage.NewConfigStorage(storageConfig)
 ```
