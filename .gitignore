@@ -18,3 +18,4 @@ coverage.out
 bin/
 .tools/
 vendor/
+config.yaml

@@ -37,7 +37,7 @@ func New(c *Config) *Providers {
 		list:   make(map[string]IProvider),
 	}
 
-	p.Add(&isp.Google{})
+	p.Add(&isp.Google{}, &isp.Yandex{})
 
 	return p
 }

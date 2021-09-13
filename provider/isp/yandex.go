@@ -4,45 +4,46 @@ import (
 	"context"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/yandex"
 )
 
-type Google struct {
+type Yandex struct {
 	oauth  *oauth2.Config
 	config cfg
 }
 
-func (v Google) Name() string {
-	return "google"
+func (v Yandex) Name() string {
+	return "yandex"
 }
 
-func (v *Google) Config(c Config) {
+func (v *Yandex) Config(c Config) {
 	v.oauth = &oauth2.Config{
 		ClientID:     c.ClientID,
 		ClientSecret: c.ClientSecret,
 		RedirectURL:  c.RedirectURL,
-		Endpoint:     google.Endpoint,
+		Endpoint:     yandex.Endpoint,
 		Scopes: []string{
-			"https://www.googleapis.com/auth/userinfo.email",
-			"https://www.googleapis.com/auth/userinfo.profile",
+			"login:email",
+			"login:info",
+			"login:avatar",
 		},
 	}
 	v.config = cfg{
 		State:       "state",
 		AuthCodeKey: "code",
-		RequestURL:  "https://openidconnect.googleapis.com/v1/userinfo",
+		RequestURL:  "https://login.yandex.ru/info",
 	}
 }
 
-func (v *Google) AuthCodeURL() string {
+func (v *Yandex) AuthCodeURL() string {
 	return v.oauth.AuthCodeURL(v.config.State)
 }
 
-func (v *Google) AuthCodeKey() string {
+func (v *Yandex) AuthCodeKey() string {
 	return v.config.AuthCodeKey
 }
 
-func (v *Google) Exchange(code string) ([]byte, error) {
+func (v *Yandex) Exchange(code string) ([]byte, error) {
 	tok, err := v.oauth.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
