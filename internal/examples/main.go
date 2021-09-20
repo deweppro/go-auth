@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/deweppro/go-auth"
+	"github.com/deweppro/go-auth/acl"
 	"github.com/deweppro/go-auth/provider"
 	"github.com/deweppro/go-auth/provider/isp"
 	"github.com/deweppro/go-auth/storage"
@@ -31,26 +33,17 @@ var (
 		},
 	}
 
+	aclHub = acl.New(storage.NewConfigStorage(storeConf), 10)
+
 	servConf = &server.Config{HTTP: server.ConfigItem{Addr: ":8080"}}
 )
 
-var _ auth.IUser = (*User)(nil)
-
-type User struct {
-	Email string `json:"email"`
-	ACL   string
-}
-
-func (v *User) GetEmail() string  { return v.Email }
-func (v *User) GetACL() string    { return v.ACL }
-func (v *User) SetACL(acl string) { v.ACL = acl }
-
 func main() {
-	authServ := auth.New(storage.NewConfigStorage(storeConf), provider.New(provConf))
+	authServ := auth.New(provider.New(provConf))
 
 	route := routes.NewRouter()
 	route.Route("/oauth/request/google", routes.CtrlFunc(authServ.Request("google")), http.MethodGet)
-	route.Route("/oauth/callback/google", routes.CtrlFunc(authServ.CallBackWithACL("google", &User{}, userHandler)), http.MethodGet)
+	route.Route("/oauth/callback/google", routes.CtrlFunc(authServ.CallBackWithUser("google", &isp.UserGoogle{}, userHandler)), http.MethodGet)
 
 	serv := server.New(servConf, route, logger.Default())
 	serv.Up()
@@ -58,8 +51,15 @@ func main() {
 	<-time.After(60 * time.Minute)
 }
 
-func userHandler(i auth.IUser, w http.ResponseWriter) {
-	u := i.(*User)
+const out = `
+email: %s
+name:  %s
+ico:   %s
+acl:   %+v
+`
+
+func userHandler(i isp.IUser, w http.ResponseWriter) {
 	w.WriteHeader(200)
-	w.Write([]byte(u.Email + " => " + u.ACL))
+	levels := aclHub.GetAll(i.GetEmail())
+	w.Write([]byte(fmt.Sprintf(out, i.GetEmail(), i.GetName(), i.GetIcon(), levels)))
 }

@@ -6,19 +6,17 @@ import (
 	"reflect"
 
 	"github.com/deweppro/go-auth/provider"
-	"github.com/deweppro/go-auth/storage"
+	"github.com/deweppro/go-auth/provider/isp"
 )
 
 type HttpHandler func(http.ResponseWriter, *http.Request)
 
 type Auth struct {
-	storage   storage.IStorage
 	providers provider.IProviders
 }
 
-func New(s storage.IStorage, p provider.IProviders) *Auth {
+func New(p provider.IProviders) *Auth {
 	return &Auth{
-		storage:   s,
 		providers: p,
 	}
 }
@@ -56,7 +54,7 @@ func (v *Auth) CallBack(name string, cb func([]byte, http.ResponseWriter)) HttpH
 	}
 }
 
-func (v *Auth) CallBackWithACL(name string, model IUser, cb func(IUser, http.ResponseWriter)) HttpHandler {
+func (v *Auth) CallBackWithUser(name string, model isp.IUser, cb func(isp.IUser, http.ResponseWriter)) HttpHandler {
 	p, err := v.providers.Get(name)
 	if err != nil {
 		return func(w http.ResponseWriter, _ *http.Request) {
@@ -75,7 +73,7 @@ func (v *Auth) CallBackWithACL(name string, model IUser, cb func(IUser, http.Res
 			return
 		}
 
-		user, ok := reflect.New(ref).Interface().(IUser)
+		user, ok := reflect.New(ref).Interface().(isp.IUser)
 		if !ok {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error())) //nolint: errcheck
@@ -88,14 +86,6 @@ func (v *Auth) CallBackWithACL(name string, model IUser, cb func(IUser, http.Res
 			w.Write([]byte(err.Error())) //nolint: errcheck
 			return
 		}
-
-		acl, ok := v.storage.FindACL(user.GetEmail())
-		if !ok {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		user.SetACL(acl)
 
 		cb(user, w)
 	}

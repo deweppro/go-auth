@@ -45,28 +45,12 @@ You can add our provider corresponding to the `provider.Provider` interface
 providers.Add(provider1, provider2, ...)
 ```
 
-### You can use ACL storage based on the config
-
-```go
-import "github.com/deweppro/go-auth/storage"
-
-var storageConfig = &storage.Config{
-        ACL: map[string]string{
-            "example.user@gmail.com": "01010101010",
-        },
-    }
-
-store := storage.NewConfigStorage(storageConfig)
-```
-
-You can use your provider corresponding to the `storage.IStorage` interface
-
 ### Initializing the authorization service
 
 ```go
 import "github.com/deweppro/go-auth"
 
-authServ := auth.New(store, providers)
+authServ := auth.New(providers)
 ```
 
 ### Request Handlers
@@ -91,12 +75,12 @@ authServ.CallBack(<provider name>, <callback function>)
   * `http.ResponseWriter` - writer who accepts your processing of response results from provider
 
 ```go
-authServ.CallBackWithACL(<provider name>, <user model>, <callback function>)
+authServ.CallBackWithUser(<provider name>, <user model>, <callback function>)
 ```
 * `<provider name>` - provider name from config
-* `<user model>` - user model corresponding to the interface `auth.IUser`
-* `<callback function>` - response results handler has signature `func(auth.IUser, http.ResponseWriter)`
-  * `auth.IUser` - a new instance of the processed user model with ACL data filling
+* `<user model>` - user model corresponding to the interface `isp.IUser`
+* `<callback function>` - response results handler has signature `func(isp.IUser, http.ResponseWriter)`
+  * `isp.IUser` - a new instance of the processed user model with ACL data filling
   * `http.ResponseWriter` - writer who accepts your processing of response results from provider
 
 ## License

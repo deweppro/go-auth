@@ -36,8 +36,6 @@ func easyjson947c98ebDecodeGithubComDewepproGoAuthProviderIsp(in *jlexer.Lexer, 
 			continue
 		}
 		switch key {
-		case "sub":
-			out.ID = string(in.String())
 		case "name":
 			out.Name = string(in.String())
 		case "picture":
@@ -61,13 +59,8 @@ func easyjson947c98ebEncodeGithubComDewepproGoAuthProviderIsp(out *jwriter.Write
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"sub\":"
-		out.RawString(prefix[1:])
-		out.String(string(in.ID))
-	}
-	{
 		const prefix string = ",\"name\":"
-		out.RawString(prefix)
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	{
