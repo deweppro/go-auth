@@ -1,5 +1,6 @@
 package storage
 
 type IStorage interface {
-	FindACL(string) (string, bool)
+	FindACL(email string) (string, bool)
+	ChangeACL(email, access string) error
 }

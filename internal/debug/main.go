@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/deweppro/go-auth"
+	"github.com/deweppro/go-auth/acl"
 	"github.com/deweppro/go-auth/provider"
 	"github.com/deweppro/go-auth/provider/isp"
+	"github.com/deweppro/go-auth/storage"
 	"github.com/deweppro/go-http/web/routes"
 	"github.com/deweppro/go-http/web/server"
 	"github.com/deweppro/go-logger"
@@ -17,6 +19,7 @@ import (
 
 var (
 	servConf = &server.Config{HTTP: server.ConfigItem{Addr: ":8080"}}
+	aclHub   = acl.New(NewDebugStorage(), 10)
 	raw      = false
 )
 
@@ -32,7 +35,7 @@ func main() {
 		panic(err)
 	}
 
-	authServ := auth.New(NewDebugStorage(), provider.New(provConf))
+	authServ := auth.New(provider.New(provConf))
 
 	route := routes.NewRouter()
 	route.Route("/oauth/r/google", routes.CtrlFunc(authServ.Request("google")), http.MethodGet)
@@ -47,11 +50,11 @@ func main() {
 	<-time.After(60 * time.Minute)
 }
 
-func switchHandler(raw bool, name string, m auth.IUser, a *auth.Auth) auth.HttpHandler {
+func switchHandler(raw bool, name string, m isp.IUser, a *auth.Auth) auth.HttpHandler {
 	if raw {
 		return a.CallBack(name, userHandlerRaw)
 	}
-	return a.CallBackWithACL(name, m, userHandlerACL)
+	return a.CallBackWithUser(name, m, userHandlerACL)
 }
 
 func userHandlerRaw(data []byte, w http.ResponseWriter) {
@@ -64,20 +67,25 @@ const out = `
 email: %s
 name:  %s
 ico:   %s
-acl:   %s
+acl:   %+v
 `
 
-func userHandlerACL(u auth.IUser, w http.ResponseWriter) {
+func userHandlerACL(u isp.IUser, w http.ResponseWriter) {
 	w.WriteHeader(200)
-	w.Write([]byte(fmt.Sprintf(out, u.GetEmail(), u.GetName(), u.GetIcon(), u.GetACL())))
+	levels := aclHub.GetAll(u.GetEmail())
+	w.Write([]byte(fmt.Sprintf(out, u.GetEmail(), u.GetName(), u.GetIcon(), levels)))
 }
 
 type DebugStorage struct{}
 
-func NewDebugStorage() *DebugStorage {
+func NewDebugStorage() storage.IStorage {
 	return &DebugStorage{}
 }
 
 func (v *DebugStorage) FindACL(email string) (string, bool) {
 	return "000", true
+}
+
+func (v *DebugStorage) ChangeACL(_, _ string) error {
+	return nil
 }
