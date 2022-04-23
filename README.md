@@ -21,25 +21,25 @@ see more [here](internal/examples)
 
 ```go
 import (
-    "github.com/deweppro/go-auth/provider"
-    "github.com/deweppro/go-auth/provider/isp"
+    "github.com/deweppro/go-auth/config"
+    "github.com/deweppro/go-auth/providers"
 )
 
-var providerConfig = &provider.Config{
-        Provider: []isp.Config{
-            {
-                Name:         "google",
-                ClientID:     "****************.apps.googleusercontent.com",
-                ClientSecret: "****************",
-                RedirectURL:  "https://example.com/oauth/callback/google",
-            },
-        },
-    }
+var providerConfig = &config.Config{
+		Provider: []config.ConfigItem{
+			{
+				Code:         "google",
+				ClientID:     "****************.apps.googleusercontent.com",
+				ClientSecret: "****************",
+				RedirectURL:  "https://example.com/oauth/callback/google",
+			},
+		},
+	}
 
-providers := provider.New(providerConfig)
+providers := providers.New(providerConfig)
 ```
 
-You can add our provider corresponding to the `provider.Provider` interface
+You can add our provider corresponding to the `providers.IProvider` interface
 
 ```go
 providers.Add(provider1, provider2, ...)
@@ -70,18 +70,9 @@ authServ.Request(<provider name>)
 authServ.CallBack(<provider name>, <callback function>)
 ```
 * `<provider name>` - provider name from config
-* `<callback function>` - response results handler has signature `func([]byte, http.ResponseWriter)`
-  * `[]byte` - raw result of the response from the provider is transmitted in the form of a byte code
-  * `http.ResponseWriter` - writer who accepts your processing of response results from provider
-
-```go
-authServ.CallBackWithUser(<provider name>, <user model>, <callback function>)
-```
-* `<provider name>` - provider name from config
-* `<user model>` - user model corresponding to the interface `isp.IUser`
-* `<callback function>` - response results handler has signature `func(isp.IUser, http.ResponseWriter)`
+* `<callback function>` - response results handler has signature `func(http.ResponseWriter, *http.Request, isp.IUser)`
   * `isp.IUser` - a new instance of the processed user model with ACL data filling
-  * `http.ResponseWriter` - writer who accepts your processing of response results from provider
+
 
 ## License
 
