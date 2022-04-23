@@ -1,10 +1,13 @@
-package provider
+package providers
 
 import (
 	"sync"
 
-	"github.com/deweppro/go-auth/provider/isp"
-	"github.com/pkg/errors"
+	"github.com/deweppro/go-auth/config"
+	"github.com/deweppro/go-auth/providers/isp"
+	"github.com/deweppro/go-auth/providers/isp/google"
+	"github.com/deweppro/go-auth/providers/isp/yandex"
+	"github.com/deweppro/go-errors"
 )
 
 var (
@@ -13,31 +16,34 @@ var (
 
 type (
 	IProvider interface {
-		Name() string
-		Config(isp.Config)
+		Code() string
+		Config(config.ConfigItem)
 		AuthCodeURL() string
 		AuthCodeKey() string
-		Exchange(code string) ([]byte, error)
+		Exchange(string) (isp.IUser, error)
 	}
 
 	IProviders interface {
-		Get(name string) (IProvider, error)
+		Get(string) (IProvider, error)
 	}
 
 	Providers struct {
-		config *Config
+		config *config.Config
 		list   map[string]IProvider
 		l      sync.RWMutex
 	}
 )
 
-func New(c *Config) *Providers {
+func New(c *config.Config) *Providers {
 	p := &Providers{
 		config: c,
 		list:   make(map[string]IProvider),
 	}
 
-	p.Add(&isp.Google{}, &isp.Yandex{})
+	p.Add(
+		&google.Provider{},
+		&yandex.Provider{},
+	)
 
 	return p
 }
@@ -48,9 +54,9 @@ func (v *Providers) Add(p ...IProvider) {
 
 	for _, item := range p {
 		for _, cp := range v.config.Provider {
-			if cp.Name == item.Name() {
+			if cp.Code == item.Code() {
 				item.Config(cp)
-				v.list[item.Name()] = item
+				v.list[item.Code()] = item
 			}
 		}
 	}

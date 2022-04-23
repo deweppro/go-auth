@@ -1,134 +1,104 @@
 package acl
 
 import (
-	"sync"
+	"context"
+	"time"
 
+	"github.com/deweppro/go-auth/internal"
 	"github.com/deweppro/go-auth/storage"
-	"github.com/pkg/errors"
+	"github.com/deweppro/go-errors"
+)
+
+var (
+	ErrChangeNotFound = errors.New("change acl is not found")
 )
 
 type IAcl interface {
-	GetAll(email string) []uint8
-	Get(email string, feature uint16) uint8
+	GetAll(email string) ([]uint8, error)
+	Get(email string, feature uint16) (uint8, error)
 	Set(email string, feature uint16, level uint8) error
-	ResetCache(email string)
+	Flush(email string)
+	AutoFlush(ctx context.Context, interval time.Duration)
 }
 
 type ACL struct {
-	size  uint
+	cache *cache
 	store storage.IStorage
-	cache map[string][]uint8
-
-	mu sync.RWMutex
 }
 
 func New(store storage.IStorage, size uint) IAcl {
 	return &ACL{
 		store: store,
-		size:  size,
-		cache: make(map[string][]uint8),
+		cache: newCache(size),
 	}
 }
 
-func (v *ACL) GetAll(email string) []uint8 {
-	if !v.hasInCache(email) {
-		v.loadToCache(email)
-	}
+func (v *ACL) AutoFlush(ctx context.Context, interval time.Duration) {
+	tick := time.NewTicker(interval)
+	defer tick.Stop()
 
-	return v.getAllFromCache(email)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ts := <-tick.C:
+			v.cache.FlushByTime(ts.Unix())
+		}
+	}
 }
 
-func (v *ACL) Get(email string, feature uint16) uint8 {
-	if !v.hasInCache(email) {
-		v.loadToCache(email)
+func (v *ACL) GetAll(email string) ([]uint8, error) {
+	if !v.cache.Has(email) {
+		if err := v.loadFromStore(email); err != nil {
+			return nil, err
+		}
 	}
 
-	if level, ok := v.getFromCache(email, feature); ok {
-		return level
+	return v.cache.GetAll(email)
+}
+
+func (v *ACL) Get(email string, feature uint16) (uint8, error) {
+	if !v.cache.Has(email) {
+		if err := v.loadFromStore(email); err != nil {
+			return 0, err
+		}
 	}
 
-	return 0
+	return v.cache.Get(email, feature)
 }
 
 func (v *ACL) Set(email string, feature uint16, level uint8) error {
-	if !v.hasInCache(email) {
-		v.loadToCache(email)
+	if !v.cache.Has(email) {
+		if err := v.loadFromStore(email); err != nil {
+			return err
+		}
 	}
 
-	v.setToCache(email, feature, level)
-	if err := v.store.ChangeACL(email, UintsToString(v.getAllFromCache(email)...)); err != nil {
-		return errors.Wrap(err, "change acl")
+	if err := v.cache.Set(email, feature, level); err != nil {
+		return err
 	}
+	return v.saveToStore(email)
+}
 
+func (v *ACL) Flush(email string) {
+	v.cache.Flush(email)
+}
+
+func (v *ACL) loadFromStore(email string) error {
+	access, err := v.store.FindACL(email)
+	if err != nil {
+		return errors.Wrap(err, ErrUserNotFound)
+	}
+	v.cache.SetAll(email, internal.StringToUints(access)...)
 	return nil
 }
 
-func (v *ACL) ResetCache(email string) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	delete(v.cache, email)
-}
-
-func (v *ACL) loadToCache(email string) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	if access, ok := v.store.FindACL(email); ok {
-		v.saveToCache(email, StringToUints(access)...)
-	} else {
-		v.saveToCache(email, make([]uint8, v.size)...)
-	}
-}
-
-func (v *ACL) hasInCache(email string) bool {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-
-	_, ok := v.cache[email]
-
-	return ok
-}
-
-func (v *ACL) getFromCache(email string, feature uint16) (uint8, bool) {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-
-	if access, ok := v.cache[email]; ok {
-		return access[feature], true
+func (v *ACL) saveToStore(email string) error {
+	access, err := v.cache.GetAll(email)
+	if err != nil {
+		return err
 	}
 
-	return 0, false
-}
-
-func (v *ACL) getAllFromCache(email string) []uint8 {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-
-	if access, ok := v.cache[email]; ok {
-		return access
-	}
-	return make([]uint8, v.size)
-}
-
-func (v *ACL) setToCache(email string, feature uint16, level uint8) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	if _, ok := v.cache[email]; !ok {
-		v.cache[email] = make([]uint8, v.size)
-	}
-
-	v.cache[email][feature] = level
-}
-
-func (v *ACL) saveToCache(email string, access ...uint8) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	if len(access) < int(v.size) {
-		access = append(access, make([]uint8, int(v.size)-len(access))...)
-	}
-
-	v.cache[email] = access[:v.size]
+	err = v.store.ChangeACL(email, internal.UintsToString(access...))
+	return errors.WrapMessage(err, "change acl")
 }

@@ -1,21 +1,19 @@
 package auth
 
 import (
-	"encoding/json"
 	"net/http"
-	"reflect"
 
-	"github.com/deweppro/go-auth/provider"
-	"github.com/deweppro/go-auth/provider/isp"
+	"github.com/deweppro/go-auth/providers"
+	"github.com/deweppro/go-auth/providers/isp"
 )
 
 type HttpHandler func(http.ResponseWriter, *http.Request)
 
 type Auth struct {
-	providers provider.IProviders
+	providers providers.IProviders
 }
 
-func New(p provider.IProviders) *Auth {
+func New(p providers.IProviders) *Auth {
 	return &Auth{
 		providers: p,
 	}
@@ -34,7 +32,7 @@ func (v *Auth) Request(name string) HttpHandler {
 	}
 }
 
-func (v *Auth) CallBack(name string, cb func([]byte, http.ResponseWriter)) HttpHandler {
+func (v *Auth) CallBack(name string, cb func(http.ResponseWriter, *http.Request, isp.IUser)) HttpHandler {
 	p, err := v.providers.Get(name)
 	if err != nil {
 		return func(w http.ResponseWriter, _ *http.Request) {
@@ -44,49 +42,12 @@ func (v *Auth) CallBack(name string, cb func([]byte, http.ResponseWriter)) HttpH
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get(p.AuthCodeKey())
-		data, err := p.Exchange(code)
+		u, err := p.Exchange(code)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error())) //nolint: errcheck
 			return
 		}
-		cb(data, w)
-	}
-}
-
-func (v *Auth) CallBackWithUser(name string, model isp.IUser, cb func(isp.IUser, http.ResponseWriter)) HttpHandler {
-	p, err := v.providers.Get(name)
-	if err != nil {
-		return func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error())) //nolint: errcheck
-		}
-	}
-
-	ref := reflect.TypeOf(model).Elem()
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := p.Exchange(r.URL.Query().Get(p.AuthCodeKey()))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error())) //nolint: errcheck
-			return
-		}
-
-		user, ok := reflect.New(ref).Interface().(isp.IUser)
-		if !ok {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error())) //nolint: errcheck
-			return
-		}
-
-		err = json.Unmarshal(data, user)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error())) //nolint: errcheck
-			return
-		}
-
-		cb(user, w)
+		cb(w, r, u)
 	}
 }

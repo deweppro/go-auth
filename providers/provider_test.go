@@ -1,25 +1,25 @@
-package provider_test
+package providers_test
 
 import (
 	"testing"
 
-	"github.com/deweppro/go-auth/provider"
-	"github.com/deweppro/go-auth/provider/isp"
+	"github.com/deweppro/go-auth/config"
+	"github.com/deweppro/go-auth/providers"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUnit_New(t *testing.T) {
-	conf := provider.Config{
-		Provider: []isp.Config{
+	conf := config.Config{
+		Provider: []config.ConfigItem{
 			{
-				Name:         "google",
+				Code:         "google",
 				ClientID:     "123",
 				ClientSecret: "456",
 				RedirectURL:  "https://example.com",
 			},
 		},
 	}
-	prov := provider.New(&conf)
+	prov := providers.New(&conf)
 
 	v, err := prov.Get("demo")
 	require.Error(t, err)
@@ -27,7 +27,7 @@ func TestUnit_New(t *testing.T) {
 
 	v, err = prov.Get("google")
 	require.NoError(t, err)
-	require.Implements(t, (*provider.IProvider)(nil), v)
+	require.Implements(t, (*providers.IProvider)(nil), v)
 
 	require.Equal(t, "code", v.AuthCodeKey())
 	require.Equal(t,
@@ -36,10 +36,10 @@ func TestUnit_New(t *testing.T) {
 }
 
 func TestUnit_NewEmpty(t *testing.T) {
-	conf := provider.Config{
-		Provider: []isp.Config{},
+	conf := config.Config{
+		Provider: []config.ConfigItem{},
 	}
-	prov := provider.New(&conf)
+	prov := providers.New(&conf)
 
 	v, err := prov.Get("demo")
 	require.Error(t, err)

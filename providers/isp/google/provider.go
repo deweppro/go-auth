@@ -1,22 +1,25 @@
-package isp
+package google
 
 import (
-	"context"
-
+	"github.com/deweppro/go-auth/config"
+	"github.com/deweppro/go-auth/internal"
+	"github.com/deweppro/go-auth/providers/isp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
-type Google struct {
+const CODE = "google"
+
+type Provider struct {
 	oauth  *oauth2.Config
-	config cfg
+	config internal.Config
 }
 
-func (v Google) Name() string {
-	return "google"
+func (v Provider) Code() string {
+	return CODE
 }
 
-func (v *Google) Config(c Config) {
+func (v *Provider) Config(c config.ConfigItem) {
 	v.oauth = &oauth2.Config{
 		ClientID:     c.ClientID,
 		ClientSecret: c.ClientSecret,
@@ -27,30 +30,25 @@ func (v *Google) Config(c Config) {
 			"https://www.googleapis.com/auth/userinfo.profile",
 		},
 	}
-	v.config = cfg{
+	v.config = internal.Config{
 		State:       "state",
 		AuthCodeKey: "code",
 		RequestURL:  "https://openidconnect.googleapis.com/v1/userinfo",
 	}
 }
 
-func (v *Google) AuthCodeURL() string {
+func (v *Provider) AuthCodeURL() string {
 	return v.oauth.AuthCodeURL(v.config.State)
 }
 
-func (v *Google) AuthCodeKey() string {
+func (v *Provider) AuthCodeKey() string {
 	return v.config.AuthCodeKey
 }
 
-func (v *Google) Exchange(code string) ([]byte, error) {
-	tok, err := v.oauth.Exchange(context.Background(), code)
-	if err != nil {
+func (v *Provider) Exchange(code string) (isp.IUser, error) {
+	model := &User{}
+	if err := internal.Exchange(code, v.config.RequestURL, v.oauth, model); err != nil {
 		return nil, err
 	}
-	client := v.oauth.Client(context.Background(), tok)
-	resp, err := client.Get(v.config.RequestURL)
-	if err != nil {
-		return nil, err
-	}
-	return readBody(resp)
+	return model, nil
 }
