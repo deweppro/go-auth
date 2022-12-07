@@ -47,9 +47,9 @@ func (v *Provider) AuthCodeKey() string {
 }
 
 func (v *Provider) Exchange(code string) (isp.IUser, error) {
-	model := &User{}
-	if err := internal.Exchange(code, v.config.RequestURL, v.oauth, model); err != nil {
+	m := &User{}
+	if err := internal.Exchange(code, v.config.RequestURL, v.oauth, m); err != nil {
 		return nil, err
 	}
-	return model, nil
+	return m, nil
 }
