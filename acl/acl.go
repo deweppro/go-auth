@@ -9,10 +9,6 @@ import (
 	"github.com/deweppro/go-errors"
 )
 
-var (
-	ErrChangeNotFound = errors.New("change acl is not found")
-)
-
 type IAcl interface {
 	GetAll(email string) ([]uint8, error)
 	Get(email string, feature uint16) (uint8, error)
