@@ -1,10 +1,7 @@
 # go-auth
 user authorization verification module
 
-[![Coverage Status](https://coveralls.io/repos/github/deweppro/go-auth/badge.svg?branch=master)](https://coveralls.io/github/deweppro/go-auth?branch=master)
-[![Release](https://img.shields.io/github/release/deweppro/go-auth.svg?style=flat-square)](https://github.com/deweppro/go-auth/releases/latest)
-[![Go Report Card](https://goreportcard.com/badge/github.com/deweppro/go-auth)](https://goreportcard.com/report/github.com/deweppro/go-auth)
-[![CI](https://github.com/deweppro/go-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/deweppro/go-auth/actions/workflows/ci.yml)
+## Deprecated. Use https://github.com/deweppro/go-sdk
 
 ## Install
 
